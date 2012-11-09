@@ -86,6 +86,31 @@ class ShellTest(utils.TestCase):
                 }},
         )
 
+    def test_boot_no_image_no_bdms(self):
+        cmd = 'boot --flavor 1 some-server'
+        self.assertRaises(exceptions.CommandError, self.run_command, cmd)
+
+    def test_boot_no_image_bdms(self):
+        self.run_command('boot --flavor 1 --block_device_mapping vda=blah:::0 some-server')
+        self.assert_called_anytime(
+            'POST', '/os-volumes_boot',
+            {'server': {
+                'flavorRef': '1',
+                'name': 'some-server',
+                'block_device_mapping': [
+                    {
+                        'volume_size': '',
+                        'volume_id': 'blah',
+                        'delete_on_termination': '0',
+                        'device_name':'vda'
+                    }
+                ],
+                'imageRef': '',
+                'min_count': 1,
+                'max_count': 1,
+                }},
+        )
+
     def test_boot_metadata(self):
         self.run_command('boot --image 1 --flavor 1 --meta foo=bar=pants'
                          ' --meta spam=eggs some-server ')
