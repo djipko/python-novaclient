@@ -91,7 +91,9 @@ class ShellTest(utils.TestCase):
         self.assertRaises(exceptions.CommandError, self.run_command, cmd)
 
     def test_boot_no_image_bdms(self):
-        self.run_command('boot --flavor 1 --block_device_mapping vda=blah:::0 some-server')
+        self.run_command(
+            'boot --flavor 1 --block_device_mapping vda=blah:::0 some-server'
+        )
         self.assert_called_anytime(
             'POST', '/os-volumes_boot',
             {'server': {

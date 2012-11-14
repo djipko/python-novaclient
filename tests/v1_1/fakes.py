@@ -277,7 +277,6 @@ class FakeHTTPClient(base_client.HTTPClient):
                     "Server Label": "DB 1"
                 }
             }
-            
         ]})
 
     def post_servers(self, body, **kw):
@@ -304,7 +303,7 @@ class FakeHTTPClient(base_client.HTTPClient):
     def get_servers_5678(self, **kw):
         r = {'server': self.get_servers_detail()[1]['servers'][1]}
         return (200, r)
-    
+
     def get_servers_9012(self, **kw):
         r = {'server': self.get_servers_detail()[1]['servers'][2]}
         return (200, r)
