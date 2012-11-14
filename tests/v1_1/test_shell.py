@@ -301,6 +301,11 @@ class ShellTest(utils.TestCase):
         self.assert_called('GET', '/flavors/1', pos=-2)
         self.assert_called('GET', '/images/2')
 
+    def test_show_no_image(self):
+        self.run_command('show 9012')
+        self.assert_called('GET', '/servers/9012', pos=-2)
+        self.assert_called('GET', '/flavors/1', pos=-1)
+
     def test_show_bad_id(self):
         self.assertRaises(exceptions.CommandError,
                           self.run_command, 'show xxx')
