@@ -992,15 +992,18 @@ def _print_server(cs, args):
                                       flavor_id)
 
     image = info.get('image', {})
-    image_id = image.get('id', '')
-    if args.minimal:
-        info['image'] = image_id
-    else:
-        try:
-            info['image'] = '%s (%s)' % (_find_image(cs, image_id).name,
-                                         image_id)
-        except Exception:
-            info['image'] = '%s (%s)' % ("Image not found", image_id)
+    if image:
+        image_id = image.get('id', '')
+        if args.minimal:
+            info['image'] = image_id
+        else:
+            try:
+                info['image'] = '%s (%s)' % (_find_image(cs, image_id).name,
+                                             image_id)
+            except Exception:
+                info['image'] = '%s (%s)' % ("Image not found", image_id)
+    else:  # Booted from volume
+        info['image'] = "Attempt to boot from volume - no image supplied"
 
     info.pop('links', None)
     info.pop('addresses', None)
