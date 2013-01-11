@@ -121,28 +121,139 @@ class ShellTest(utils.TestCase):
         cmd = 'boot --flavor 1 some-server'
         self.assertRaises(exceptions.CommandError, self.run_command, cmd)
 
-    def test_boot_no_image_bdms(self):
-        self.run_command(
-            'boot --flavor 1 --block_device_mapping vda=blah:::0 some-server'
+    def test_boot_bdms_details(self):
+        commands = (
+            'boot --flavor 1 --image 1 %s some-server',
+            'boot --flavor 1 %s some-server'
         )
-        self.assert_called_anytime(
-            'POST', '/os-volumes_boot',
-            {'server': {
+        servers = ({
+            'server': {
                 'flavorRef': '1',
                 'name': 'some-server',
-                'block_device_mapping': [
-                    {
-                        'volume_size': '',
-                        'volume_id': 'blah',
-                        'delete_on_termination': '0',
-                        'device_name':'vda'
-                    }
-                ],
+                'block_device_mapping': [],
+                'imageRef': '1',
+                'min_count': 1,
+                'max_count': 1,
+                }
+            },
+            {
+            'server': {
+                'flavorRef': '1',
+                'name': 'some-server',
+                'block_device_mapping': [],
                 'imageRef': '',
                 'min_count': 1,
                 'max_count': 1,
-                }},
+                }
+            },
         )
+
+        def _bdm_command(bdm_mappings):
+            return " ".join(
+                map(lambda s: "--block_device_mapping %s" % s, bdm_mappings)
+            )
+
+        # Make sure it works with and w/o an image
+        for command, server in zip(commands, servers):
+            # a normal volume
+            self.run_command(command %
+                             _bdm_command(["my_label=some_id:volume::0:0"]))
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_size': '',
+                    'volume_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '0',
+                    'device_type': 'volume'
+                }
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
+
+            # normal snapshot
+            self.run_command(command %
+                             _bdm_command(["my_label=some_id:snapshot::0:0"]))
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_size': '',
+                    'snapshot_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '0',
+                    'device_type': 'snapshot'
+                }
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
+
+            # Unrecognized type - defaults to volume
+            self.run_command(command %
+                             _bdm_command(
+                                    ["my_label=some_id:blahblahgarbage::0:0"]
+                                )
+                             )
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_size': '',
+                    'volume_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '0',
+                    'device_type': 'volume'
+                }
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
+
+            # Root volume
+            self.run_command(command %
+                             _bdm_command(["my_label=some_id:volume::0:1"]))
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_size': '',
+                    'volume_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '1',
+                    'device_type': 'volume'
+                }
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
+
+            # Root snapshot
+            self.run_command(command %
+                             _bdm_command(["my_label=some_id:snapshot::0:1"]))
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_size': '',
+                    'snapshot_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '1',
+                    'device_type': 'snapshot'
+                }
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
+
+            # More than one BDM
+            self.run_command(command % _bdm_command(
+                ["my_label=some_id:snapshot::0:0", "my_other_label=other_id"])
+            )
+            server['server']['block_device_mapping'] = [
+                {
+                    'volume_id': 'other_id',
+                    'user_label': 'my_other_label',
+                    'is_root': '0',
+                    'device_type': 'volume'
+                },
+                {
+                    'volume_size': '',
+                    'snapshot_id': 'some_id',
+                    'user_label': 'my_label',
+                    'delete_on_termination': '0',
+                    'is_root': '0',
+                    'device_type': 'snapshot'
+                },
+            ]
+            self.assert_called_anytime('POST', '/os-volumes_boot', server)
 
     def test_boot_metadata(self):
         self.run_command('boot --image 1 --flavor 1 --meta foo=bar=pants'

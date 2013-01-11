@@ -120,27 +120,36 @@ class BootingManagerWithFind(base.ManagerWithFind):
         # Block device mappings are passed as a list of dictionaries
         if block_device_mapping:
             bdm = body['server']['block_device_mapping'] = []
-            for device_name, mapping in block_device_mapping.items():
+            for user_label, mapping in block_device_mapping.items():
                 #
                 # The mapping is in the format:
-                # <id>:[<type>]:[<size(GB)>]:[<delete_on_terminate>]
+                # <id>:[<type>]:[<size(GB)>]:[<delete_on_terminate>]:[is_root]
                 #
-                bdm_dict = {'device_name': device_name}
+                bdm_dict = {
+                    'user_label': user_label,
+                    'is_root': '0'
+                }
 
                 mapping_parts = mapping.split(':')
                 id = mapping_parts[0]
                 if len(mapping_parts) == 1:
                     bdm_dict['volume_id'] = id
+                    bdm_dict['device_type'] = 'volume'  # Default to volume
                 if len(mapping_parts) > 1:
-                    type = mapping_parts[1]
-                    if type.startswith('snap'):
+                    device_type = mapping_parts[1]
+                    if device_type == 'snapshot':
                         bdm_dict['snapshot_id'] = id
+                        bdm_dict['device_type'] = device_type
                     else:
+                        device_type = 'volume'
                         bdm_dict['volume_id'] = id
+                        bdm_dict['device_type'] = device_type
                 if len(mapping_parts) > 2:
                     bdm_dict['volume_size'] = mapping_parts[2]
                 if len(mapping_parts) > 3:
                     bdm_dict['delete_on_termination'] = mapping_parts[3]
+                if len(mapping_parts) > 4:
+                    bdm_dict['is_root'] = mapping_parts[4]
                 bdm.append(bdm_dict)
 
         if nics is not None:
